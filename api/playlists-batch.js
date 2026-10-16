@@ -342,3 +342,6 @@ module.exports = async function handler(req, res) {
     results
   });
 };
+
+// Expose the catalogue for the category-specific API handlers.
+module.exports.PLAYLISTS = PLAYLISTS;
