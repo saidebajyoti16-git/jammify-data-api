@@ -168,7 +168,6 @@ const PLAYLISTS = [
   { name: "K-Pop Rising", id: "37i9dQZF1DX4FcAKI5Nhzq", category: "K-Pop" },
   { name: "Jazz in the Background", id: "37i9dQZF1DWV7EzJMK2FUI", category: "Jazz" },
   { name: "State of Jazz", id: "37i9dQZF1DX7YCknf2jT6s", category: "Jazz" },
-  { name: "Classical Moments in Love", id: "37i9dQZF1DX8qqIDAkублі", category: "Classical" },
   { name: "Sad Songs", id: "37i9dQZF1DX7qK8ma5wgG1", category: "Mood" },
 
 ];
