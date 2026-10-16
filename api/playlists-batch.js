@@ -311,6 +311,41 @@ function proxyArtwork(value) {
   }
 }
 
+
+async function fetchPublicPageMetadata(playlistUrl) {
+  try {
+    const response = await fetch(playlistUrl, {
+      headers: {
+        Accept: "text/html,application/xhtml+xml",
+        "User-Agent": "Mozilla/5.0 (compatible; RESONATEPlaylistMetadata/1.0)"
+      },
+      signal: AbortSignal.timeout(5000)
+    });
+    if (!response.ok) return null;
+    const html = await response.text();
+    const meta = (key) => {
+      const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\
+module.exports = async function handler");
+      const patterns = [
+        new RegExp('<meta[^>]+property=["\\']' + escaped + '["\\'][^>]+content=["\\']([^"\\']+)["\\']', "i"),
+        new RegExp('<meta[^>]+content=["\\']([^"\\']+)["\\'][^>]+property=["\\']' + escaped + '["\\']', "i"),
+        new RegExp('<meta[^>]+name=["\\']' + escaped + '["\\'][^>]+content=["\\']([^"\\']+)["\\']', "i"),
+      ];
+      for (const pattern of patterns) {
+        const match = html.match(pattern);
+        if (match?.[1]) return match[1].replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#x27;/g, "'");
+      }
+      return "";
+    };
+    return {
+      title: meta("og:title") || meta("twitter:title"),
+      image: meta("og:image") || meta("twitter:image")
+    };
+  } catch {
+    return null;
+  }
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
@@ -349,23 +384,49 @@ module.exports = async function handler(req, res) {
           continue;
         }
         if (!response.ok) {
-          results[index] = {
-            ...playlist,
-            ok: false,
-            status: response.status,
-            error: data.error || data.message || "Request failed"
-          };
+          const page = await fetchPublicPageMetadata(playlistUrl);
+          const pageImage = proxyArtwork(page?.image || "");
+          if (pageImage) {
+            results[index] = {
+              ...playlist,
+              ok: true,
+              title: page?.title || playlist.name,
+              thumbnail_url: pageImage,
+              original_thumbnail_url: page?.image || null,
+              embed_url: "https://open.spotify.com/embed/playlist/" + playlist.id,
+              playlist_url: playlistUrl,
+              source: "spotify-public-page-metadata"
+            };
+          } else {
+            results[index] = {
+              ...playlist,
+              ok: false,
+              status: response.status,
+              error: data.error || data.message || "No public playlist artwork found"
+            };
+          }
           continue;
+        }
+        let originalThumbnail = data.thumbnail_url || "";
+        let playlistTitle = data.title || playlist.name;
+        let artwork = proxyArtwork(originalThumbnail);
+        if (!artwork) {
+          const page = await fetchPublicPageMetadata(playlistUrl);
+          if (page?.title) playlistTitle = page.title;
+          if (page?.image) {
+            originalThumbnail = page.image;
+            artwork = proxyArtwork(page.image);
+          }
         }
         results[index] = {
           ...playlist,
           ok: true,
-          title: data.title || playlist.name,
-          thumbnail_url: proxyArtwork(data.thumbnail_url) || null,
-          original_thumbnail_url: data.thumbnail_url || null,
-          embed_url: data.iframe_url || null,
+          title: playlistTitle,
+          thumbnail_url: artwork || null,
+          original_thumbnail_url: originalThumbnail || null,
+          embed_url: data.iframe_url || "https://open.spotify.com/embed/playlist/" + playlist.id,
           playlist_url: playlistUrl,
-          source: "spotify-public-oembed"
+          source: artwork && originalThumbnail !== data.thumbnail_url ? "spotify-public-page-metadata" : "spotify-public-oembed"
         };
       } catch (error) {
         results[index] = { ...playlist, ok: false, error: error?.message || "Request failed" };
