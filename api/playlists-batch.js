@@ -325,9 +325,9 @@ async function fetchPublicPageMetadata(playlistUrl) {
     const html = await response.text();
     const meta = (key) => {
       const patterns = [
-        new RegExp('<meta[^>]+property=["\\']' + key + '["\\'][^>]+content=["\\']([^"\\']+)["\\']', "i"),
-        new RegExp('<meta[^>]+content=["\\']([^"\\']+)["\\'][^>]+property=["\\']' + key + '["\\']', "i"),
-        new RegExp('<meta[^>]+name=["\\']' + key + '["\\'][^>]+content=["\\']([^"\\']+)["\\']', "i"),
+        new RegExp(`<meta[^>]+property=["']${key}["'][^>]+content=["']([^"']+)["']`, "i"),
+        new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+property=["']${key}["']`, "i"),
+        new RegExp(`<meta[^>]+name=["']${key}["'][^>]+content=["']([^"']+)["']`, "i"),
       ];
       for (const pattern of patterns) {
         const match = html.match(pattern);
