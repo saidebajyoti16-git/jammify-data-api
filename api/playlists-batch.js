@@ -343,27 +343,6 @@ async function fetchPublicPageMetadata(playlistUrl) {
     return null;
   }
 }
-module.exports = async function handler");
-      const patterns = [
-        new RegExp('<meta[^>]+property=["\\']' + escaped + '["\\'][^>]+content=["\\']([^"\\']+)["\\']', "i"),
-        new RegExp('<meta[^>]+content=["\\']([^"\\']+)["\\'][^>]+property=["\\']' + escaped + '["\\']', "i"),
-        new RegExp('<meta[^>]+name=["\\']' + escaped + '["\\'][^>]+content=["\\']([^"\\']+)["\\']', "i"),
-      ];
-      for (const pattern of patterns) {
-        const match = html.match(pattern);
-        if (match?.[1]) return match[1].replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#x27;/g, "'");
-      }
-      return "";
-    };
-    return {
-      title: meta("og:title") || meta("twitter:title"),
-      image: meta("og:image") || meta("twitter:image")
-    };
-  } catch {
-    return null;
-  }
-}
-
 module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
