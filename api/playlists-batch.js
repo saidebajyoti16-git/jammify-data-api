@@ -274,6 +274,18 @@ const PLAYLISTS = [
 
 ];
 
+function proxyArtwork(value) {
+  if (typeof value !== "string" || !value) return null;
+  try {
+    const parsed = new URL(value);
+    const approvedHosts = new Set(["i.scdn.co", "image-cdn-fa.spotifycdn.com", "image-cdn-ak.spotifycdn.com"]);
+    if (parsed.protocol !== "https:" || !approvedHosts.has(parsed.hostname)) return null;
+    return "https://jammify-data-api.vercel.app/api/image?url=" + encodeURIComponent(value);
+  } catch {
+    return null;
+  }
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
@@ -283,15 +295,18 @@ module.exports = async function handler(req, res) {
 
   // Keep the fan-out bounded so a large catalogue does not overwhelm the
   // serverless function or Spotify's public oEmbed endpoint.
-  const results = new Array(PLAYLISTS.length);
+  // De-duplicate IDs before requests. Spotify's public title is authoritative;
+  // the hardcoded name is only a fallback if Spotify doesn't return one.
+  const catalogue = [...new Map(PLAYLISTS.map(item => [item.id, item])).values()];
+  const results = new Array(catalogue.length);
   let nextIndex = 0;
-  const workerCount = Math.min(12, PLAYLISTS.length);
+  const workerCount = Math.min(12, catalogue.length);
 
   async function worker() {
     while (true) {
       const index = nextIndex++;
-      if (index >= PLAYLISTS.length) return;
-      const playlist = PLAYLISTS[index];
+      if (index >= catalogue.length) return;
+      const playlist = catalogue[index];
       const playlistUrl = "https://open.spotify.com/playlist/" + playlist.id;
       try {
         const endpoint = new URL("https://open.spotify.com/oembed");
@@ -321,9 +336,11 @@ module.exports = async function handler(req, res) {
           ...playlist,
           ok: true,
           title: data.title || playlist.name,
-          thumbnail_url: data.thumbnail_url || null,
+          thumbnail_url: proxyArtwork(data.thumbnail_url) || null,
+          original_thumbnail_url: data.thumbnail_url || null,
           embed_url: data.iframe_url || null,
-          playlist_url: playlistUrl
+          playlist_url: playlistUrl,
+          source: "spotify-public-oembed"
         };
       } catch (error) {
         results[index] = { ...playlist, ok: false, error: error?.message || "Request failed" };
@@ -337,6 +354,7 @@ module.exports = async function handler(req, res) {
   return res.status(200).json({
     ok: results.some((item) => item && item.ok),
     total: results.length,
+    catalogued: PLAYLISTS.length,
     successful: results.filter((item) => item && item.ok).length,
     failed: results.filter((item) => !item || !item.ok).length,
     results
