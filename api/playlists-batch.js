@@ -324,7 +324,25 @@ async function fetchPublicPageMetadata(playlistUrl) {
     if (!response.ok) return null;
     const html = await response.text();
     const meta = (key) => {
-      const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\
+      const patterns = [
+        new RegExp('<meta[^>]+property=["\\']' + key + '["\\'][^>]+content=["\\']([^"\\']+)["\\']', "i"),
+        new RegExp('<meta[^>]+content=["\\']([^"\\']+)["\\'][^>]+property=["\\']' + key + '["\\']', "i"),
+        new RegExp('<meta[^>]+name=["\\']' + key + '["\\'][^>]+content=["\\']([^"\\']+)["\\']', "i"),
+      ];
+      for (const pattern of patterns) {
+        const match = html.match(pattern);
+        if (match?.[1]) return match[1].replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#x27;/g, "'");
+      }
+      return "";
+    };
+    return {
+      title: meta("og:title") || meta("twitter:title"),
+      image: meta("og:image") || meta("twitter:image")
+    };
+  } catch {
+    return null;
+  }
+}
 module.exports = async function handler");
       const patterns = [
         new RegExp('<meta[^>]+property=["\\']' + escaped + '["\\'][^>]+content=["\\']([^"\\']+)["\\']', "i"),
