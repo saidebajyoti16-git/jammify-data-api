@@ -11,6 +11,6 @@ module.exports = function handler(req, res) {
     if (!categories[item.category]) categories[item.category] = { name: item.category, slug: item.category.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""), configured: 0 };
     categories[item.category].configured++;
   }
-  const results = Object.values(categories).map(category => ({ ...category, url: "/api/" + category.slug })).sort((a,b) => a.name.localeCompare(b.name));
+  const results = Object.values(categories).map(category => ({ ...category, url: "/api/category?name=" + encodeURIComponent(category.slug) })).sort((a,b) => a.name.localeCompare(b.name));
   return res.status(200).json({ success: true, count: results.length, source: "Spotify playlist ID catalogue", note: "Configured counts are source entries before duplicate Spotify IDs are removed.", categories: results });
 };
