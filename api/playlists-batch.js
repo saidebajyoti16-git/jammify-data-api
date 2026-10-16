@@ -69,7 +69,7 @@ const PLAYLISTS = [
   { name: "Hot Hits Hindi", id: "37i9dQZF1DX0XUfTFmNBRM", category: "Hindi" },
   { name: "Punjabi 101", id: "37i9dQZF1DWZNJXX2UeBij", category: "Punjabi" },
   { name: "Indie India", id: "37i9dQZF1DXd8cOUrf8y9A", category: "Indian Indie" },
-  { name: "Desi Hits", id: "37i9dQZF1DX2yvmlOdMYzV", category: "Indian Pop" }
+  { name: "Desi Hits", id: "37i9dQZF1DX2yvmlOdMYzV", category: "Indian Pop" },
 
   // More pop, chart hits and new music
   { name: "Pop Hits", id: "37i9dQZF1DX5gQonLbZD9s", category: "Pop" },
@@ -142,45 +142,68 @@ const PLAYLISTS = [
 module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
 
-  const results = await Promise.all(PLAYLISTS.map(async (playlist) => {
-    try {
+  // Keep the fan-out bounded so a large catalogue does not overwhelm the
+  // serverless function or Spotify's public oEmbed endpoint.
+  const results = new Array(PLAYLISTS.length);
+  let nextIndex = 0;
+  const workerCount = Math.min(12, PLAYLISTS.length);
+
+  async function worker() {
+    while (true) {
+      const index = nextIndex++;
+      if (index >= PLAYLISTS.length) return;
+      const playlist = PLAYLISTS[index];
       const playlistUrl = "https://open.spotify.com/playlist/" + playlist.id;
-      const endpoint = new URL("https://open.spotify.com/oembed");
-      endpoint.searchParams.set("url", playlistUrl);
-      const response = await fetch(endpoint, {
-        headers: { Accept: "application/json" },
-        signal: AbortSignal.timeout(8000)
-      });
-      const body = await response.text();
-      let data;
-      try { data = JSON.parse(body); } catch {
-        return { ...playlist, ok: false, status: response.status, error: "Non-JSON response" };
+      try {
+        const endpoint = new URL("https://open.spotify.com/oembed");
+        endpoint.searchParams.set("url", playlistUrl);
+        const response = await fetch(endpoint, {
+          headers: { Accept: "application/json" },
+          signal: AbortSignal.timeout(4500)
+        });
+        const body = await response.text();
+        let data;
+        try {
+          data = JSON.parse(body);
+        } catch {
+          results[index] = { ...playlist, ok: false, status: response.status, error: "Non-JSON response" };
+          continue;
+        }
+        if (!response.ok) {
+          results[index] = {
+            ...playlist,
+            ok: false,
+            status: response.status,
+            error: data.error || data.message || "Request failed"
+          };
+          continue;
+        }
+        results[index] = {
+          ...playlist,
+          ok: true,
+          title: data.title || playlist.name,
+          thumbnail_url: data.thumbnail_url || null,
+          embed_url: data.iframe_url || null,
+          playlist_url: playlistUrl
+        };
+      } catch (error) {
+        results[index] = { ...playlist, ok: false, error: error?.message || "Request failed" };
       }
-      if (!response.ok) {
-        return { ...playlist, ok: false, status: response.status, error: data.error || data.message || "Request failed" };
-      }
-      return {
-        ...playlist,
-        ok: true,
-        title: data.title || playlist.name,
-        thumbnail_url: data.thumbnail_url || null,
-        embed_url: data.iframe_url || null,
-        playlist_url: playlistUrl
-      };
-    } catch (error) {
-      return { ...playlist, ok: false, error: error?.message || "Request failed" };
     }
-  }));
+  }
+
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
 
   res.setHeader("Cache-Control", "s-maxage=300, stale-while-revalidate=600");
   return res.status(200).json({
-    ok: results.some((item) => item.ok),
+    ok: results.some((item) => item && item.ok),
     total: results.length,
-    successful: results.filter((item) => item.ok).length,
-    failed: results.filter((item) => !item.ok).length,
+    successful: results.filter((item) => item && item.ok).length,
+    failed: results.filter((item) => !item || !item.ok).length,
     results
   });
 };
