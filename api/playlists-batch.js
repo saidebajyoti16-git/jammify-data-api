@@ -272,6 +272,31 @@ const PLAYLISTS = [
   { name: "Celtic Folk", id: "37i9dQZF1DXaUDcU6KDCj4", category: "World" },
   { name: "ASMR Sleep", id: "37i9dQZF1DWZqd5JICZI0u", category: "Sleep" },
 
+
+  // Expanded Indian languages and regional listening (public Spotify playlists)
+  { name: "Tamil Party Time", id: "37i9dQZF1DX0nA91dV2ts4", category: "Tamil" },
+  { name: "Latest Tamil", id: "37i9dQZF1DWVo4cdnikh7Z", category: "Tamil" },
+  { name: "Trending Now Malayalam", id: "37i9dQZF1DWTYKFynxp6Fs", category: "Malayalam" },
+  { name: "Kannada Romance", id: "37i9dQZF1DX2MvScOHAAiE", category: "Kannada" },
+  { name: "Latest Kannada", id: "37i9dQZF1DWZqTcNLmb3sH", category: "Kannada" },
+  { name: "Latest Marathi Hits", id: "37i9dQZF1DWZBIyOatufxH", category: "Marathi" },
+  { name: "Hindi Songs", id: "6oE7P6Q0vYsX2xIPMTDfqP", category: "Hindi" },
+  { name: "Gujarati Hits", id: "0ahtofkR9qHdctnA56ash7", category: "Gujarati" },
+  { name: "Bhojpuri Trending Songs", id: "6mRu9KRG1Y2LpXszuIjQ7s", category: "Bhojpuri" },
+  { name: "The Sound of Dogri Pop", id: "6x6aopCKJ8xO5h7xzJbiDm", category: "Dogri" },
+  { name: "The Sound of Haryanvi Ragni", id: "5fr1qPUgDNqwwwOwUKegyP", category: "Haryanvi" },
+  { name: "Hindi Hip-Hop Love Songs", id: "6CxAB47esWccuMWS09j4Lt", category: "Hindi Hip-Hop" },
+  { name: "Best Sufi Hits Forever", id: "1jFomOoskG76itsOtGgzbB", category: "Sufi" },
+  { name: "North Indian Songs", id: "1f28fappEoEVlJyi6SiPq9", category: "North Indian" },
+  { name: "South Indian Item Songs", id: "6dUrhh3W6WosOsOIuPBzu1", category: "South Indian" },
+  { name: "Latest Tamil Songs 2026", id: "1vZxz6UScNNl97iwwlHxys", category: "Tamil" },
+  { name: "Trending Tamil Songs", id: "04wyLWYsskgWjn9827AQj3", category: "Tamil" },
+  { name: "Kannada Movie Hits", id: "7H31ger4pLbHIL2Z4PNxQW", category: "Kannada" },
+  { name: "Hindi Romantic Hits", id: "4JVk61MtUyKIOsohhhsDGs", category: "Hindi Romance" },
+  { name: "New Hindi Releases", id: "7ic89UJhz04rYuhNXjEzvK", category: "Hindi New Releases" },
+  { name: "Hindi Heartbreak & Love", id: "41dDxS8ZaI31Rnuj1jvRta", category: "Hindi Romance" },
+  { name: "Indian Sufi and Urdu Hits", id: "1jFomOoskG76itsOtGgzbB", category: "Sufi" },
+
 ];
 
 function proxyArtwork(value) {
