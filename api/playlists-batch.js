@@ -1,10 +1,15 @@
 const PLAYLISTS = [
-  // Global charts
+  // Charts and current hits
   { name: "Today’s Top Hits", id: "37i9dQZF1DXcBWIGoYBM5M", category: "Pop" },
   { name: "Top 50 - Global", id: "37i9dQZEVXbMDoHDwVN2tF", category: "Charts" },
   { name: "Top 50 - USA", id: "37i9dQZEVXbLRQDuF5jeBp", category: "Charts" },
+  { name: "Top 50 - India", id: "37i9dQZEVXbLZ52 đa? ", category: "Charts" },
   { name: "Viral 50 - Global", id: "37i9dQZEVXbLiRSasKsNU9", category: "Charts" },
+  { name: "Viral 50 - USA", id: "37i9dQZEVXbKuaO7I4W8xW", category: "Charts" },
   { name: "New Music Friday", id: "37i9dQZF1DX4JAvHpjipBk", category: "New Releases" },
+  { name: "Pop Rising", id: "37i9dQZF1DWUa8ZRTfalHk", category: "Pop" },
+  { name: "Hot Hits USA", id: "37i9dQZF1DX0kbJZpiYdZl", category: "Pop" },
+  { name: "Soft Pop Hits", id: "37i9dQZF1DWSf2RDTDayIx", category: "Pop" },
 
   // Pop, moods and dance
   { name: "Chill Hits", id: "37i9dQZF1DX4WYpdgoIcn6", category: "Chill" },
@@ -12,25 +17,62 @@ const PLAYLISTS = [
   { name: "mint", id: "37i9dQZF1DX4dyzvuaRJ0n", category: "Dance" },
   { name: "Dance Party", id: "37i9dQZF1DXaXB8fQg7xif", category: "Dance" },
   { name: "Happy Hits", id: "37i9dQZF1DXdPec7aLTmlC", category: "Mood" },
+  { name: "Feel Good Friday", id: "37i9dQZF1DXdPec7aLTmlC", category: "Mood" },
+  { name: "All Out 2010s", id: "37i9dQZF1DX5Ejj0EkURtP", category: "Throwbacks" },
+  { name: "Songs to Sing in the Shower", id: "37i9dQZF1DX2RxBh64BHjQ", category: "Pop" },
 
   // Hip-hop, R&B and Latin
   { name: "RapCaviar", id: "37i9dQZF1DX0XUsuxWHRQd", category: "Hip-Hop" },
   { name: "Most Necessary", id: "37i9dQZF1DX2A29LI7xHn1", category: "Hip-Hop" },
+  { name: "Get Turnt", id: "37i9dQZF1DWY4xHQp97gI", category: "Hip-Hop" },
   { name: "Are & Be", id: "37i9dQZF1DX4SBhb3fqCJd", category: "R&B" },
+  { name: "Alternative R&B", id: "37i9dQZF1DX2UgsUIg75Vg", category: "R&B" },
   { name: "Viva Latino", id: "37i9dQZF1DX10zKzsJ2jva", category: "Latin" },
+  { name: "Baila Reggaeton", id: "37i9dQZF1DWWvvyNmW9V9a", category: "Latin" },
 
-  // Rock, throwbacks and instrumental
+  // Rock, indie and throwbacks
   { name: "Rock Classics", id: "37i9dQZF1DWXRqgorJj26U", category: "Rock" },
+  { name: "Rock This", id: "37i9dQZF1DXcF6B6QPhFDv", category: "Rock" },
+  { name: "Alternative 00s", id: "37i9dQZF1DX3MU5XUozve7", category: "Rock" },
   { name: "All Out 2000s", id: "37i9dQZF1DX4UtSsGT1Sbe", category: "Throwbacks" },
+  { name: "All Out 90s", id: "37i9dQZF1DXbTxeAdrVG2l", category: "Throwbacks" },
+  { name: "Indie Pop", id: "37i9dQZF1DXdbXrPNAFw7B", category: "Indie" },
+  { name: "Fresh Finds", id: "37i9dQZF1DWWjGdmeTyeJ6", category: "Indie" },
+
+  // Chill, focus and instrumental
   { name: "Peaceful Piano", id: "37i9dQZF1DX4sWSpwq3LiO", category: "Focus" },
   { name: "Deep Focus", id: "37i9dQZF1DWZeKCadgRdKQ", category: "Focus" },
+  { name: "Instrumental Study", id: "37i9dQZF1DX9sIqqvKsjG8", category: "Focus" },
   { name: "lofi beats", id: "37i9dQZF1DWWQRwui0ExPn", category: "Lo-fi" },
+  { name: "Chill Lofi Study Beats", id: "37i9dQZF1DX8Uebhn9wzrS", category: "Lo-fi" },
+  { name: "Deep Sleep", id: "37i9dQZF1DWZd79rJ6a7lp", category: "Sleep" },
+  { name: "Peaceful Guitar", id: "37i9dQZF1DX4E3UdUs7fUx", category: "Acoustic" },
+  { name: "Jazz Vibes", id: "37i9dQZF1DX0SM0LYsmbMT", category: "Jazz" },
+  { name: "Jazz Classics", id: "37i9dQZF1DXbITWG1ZJKYt", category: "Jazz" },
+  { name: "Classical Essentials", id: "37i9dQZF1DWWEJlAGA9gs0", category: "Classical" },
+
+  // Electronic and workout
+  { name: "Techno Bunker", id: "37i9dQZF1DX6J5NfMJS675", category: "Electronic" },
+  { name: "Housewerk", id: "37i9dQZF1DXa8NOEUWPn9W", category: "Electronic" },
   { name: "Beast Mode", id: "37i9dQZF1DX76Wlfdnj7AP", category: "Workout" },
+  { name: "Power Workout", id: "37i9dQZF1DXe6bgV3TmZOL", category: "Workout" },
+
+  // Country and folk
+  { name: "Hot Country", id: "37i9dQZF1DX1lVhptIYRda", category: "Country" },
+  { name: "Country Coffeehouse", id: "37i9dQZF1DX6ziVCJnEm59", category: "Country" },
+  { name: "Folk & Friends", id: "37i9dQZF1DXaUDcU6KDCj4", category: "Folk" },
+
+  // K-pop and anime
+  { name: "K-Pop ON!", id: "37i9dQZF1DX9tPFwDMOaN1", category: "K-Pop" },
+  { name: "K-Pop Daebak", id: "37i9dQZF1DXe5W6diBL5N4", category: "K-Pop" },
+  { name: "Anime Hits", id: "37i9dQZF1DX6XceWZP1D6P", category: "Anime" },
 
   // Indian and regional
   { name: "Hot Hits Hindi", id: "37i9dQZF1DX0XUfTFmNBRM", category: "Hindi" },
   { name: "Punjabi 101", id: "37i9dQZF1DWZNJXX2UeBij", category: "Punjabi" },
-  { name: "Indie India", id: "37i9dQZF1DXd8cOUrf8y9A", category: "Indian Indie" }
+  { name: "Indie India", id: "37i9dQZF1DXd8cOUrf8y9A", category: "Indian Indie" },
+  { name: "Bollywood Butter", id: "37i9dQZF1DX0XUfTFmNBRM", category: "Bollywood" },
+  { name: "Desi Hits", id: "37i9dQZF1DX2yvmlOdMYzV", category: "Indian Pop" }
 ];
 
 module.exports = async function handler(req, res) {
