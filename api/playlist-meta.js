@@ -56,7 +56,8 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({
       ok: true,
       title: data.title || null,
-      thumbnail_url: data.thumbnail_url || null,
+      thumbnail_url: data.thumbnail_url ? ((req.headers["x-forwarded-proto"] || "https") + "://" + (req.headers["x-forwarded-host"] || req.headers.host) + "/api/image?url=" + encodeURIComponent(data.thumbnail_url)) : null,
+      original_thumbnail_url: data.thumbnail_url || null,
       embed_url: data.iframe_url || null,
       playlist_url: parsed.origin + parsed.pathname,
       provider: data.provider_name || "Spotify"
