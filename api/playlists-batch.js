@@ -3,7 +3,7 @@ const PLAYLISTS = [
   { name: "Today’s Top Hits", id: "37i9dQZF1DXcBWIGoYBM5M", category: "Pop" },
   { name: "Top 50 - Global", id: "37i9dQZEVXbMDoHDwVN2tF", category: "Charts" },
   { name: "Top 50 - USA", id: "37i9dQZEVXbLRQDuF5jeBp", category: "Charts" },
-  { name: "Top 50 - India", id: "37i9dQZEVXbLZ52 đa? ", category: "Charts" },
+  { name: "Top 50 - India", id: "37i9dQZEVXbLZ52XmnySJg", category: "Charts" },
   { name: "Viral 50 - Global", id: "37i9dQZEVXbLiRSasKsNU9", category: "Charts" },
   { name: "Viral 50 - USA", id: "37i9dQZEVXbKuaO7I4W8xW", category: "Charts" },
   { name: "New Music Friday", id: "37i9dQZF1DX4JAvHpjipBk", category: "New Releases" },
@@ -17,7 +17,6 @@ const PLAYLISTS = [
   { name: "mint", id: "37i9dQZF1DX4dyzvuaRJ0n", category: "Dance" },
   { name: "Dance Party", id: "37i9dQZF1DXaXB8fQg7xif", category: "Dance" },
   { name: "Happy Hits", id: "37i9dQZF1DXdPec7aLTmlC", category: "Mood" },
-  { name: "Feel Good Friday", id: "37i9dQZF1DXdPec7aLTmlC", category: "Mood" },
   { name: "All Out 2010s", id: "37i9dQZF1DX5Ejj0EkURtP", category: "Throwbacks" },
   { name: "Songs to Sing in the Shower", id: "37i9dQZF1DX2RxBh64BHjQ", category: "Pop" },
 
@@ -71,7 +70,6 @@ const PLAYLISTS = [
   { name: "Hot Hits Hindi", id: "37i9dQZF1DX0XUfTFmNBRM", category: "Hindi" },
   { name: "Punjabi 101", id: "37i9dQZF1DWZNJXX2UeBij", category: "Punjabi" },
   { name: "Indie India", id: "37i9dQZF1DXd8cOUrf8y9A", category: "Indian Indie" },
-  { name: "Bollywood Butter", id: "37i9dQZF1DX0XUfTFmNBRM", category: "Bollywood" },
   { name: "Desi Hits", id: "37i9dQZF1DX2yvmlOdMYzV", category: "Indian Pop" }
 ];
 
