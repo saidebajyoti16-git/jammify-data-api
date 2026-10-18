@@ -1,6 +1,6 @@
 const DEFAULT_LIMIT = 60;
 const MAX_LIMIT = 100;
-const ID_PATTERN = /open\\.spotify\\.com\\/(?:user\\/[^"'\\s/?]+\\/)?playlist\\/([A-Za-z0-9]{10,64})/gi;
+const ID_PATTERN = new RegExp('open[.]spotify[.]com/(?:user/[^"/? ]+/)?playlist/([A-Za-z0-9]{10,64})', 'gi');
 
 const GENERIC_VARIANTS = [
   "best songs playlist",
@@ -56,7 +56,7 @@ function findPlaylistIds(html) {
   const decoded = decodeHtml(html);
   const candidates = [decoded];
   try {
-    candidates.push(decodeURIComponent(decoded.replace(/\\+/g, "%20")));
+    candidates.push(decodeURIComponent(decoded.split("+").join("%20")));
   } catch {}
   const found = [];
   const seen = new Set();
