@@ -123,7 +123,8 @@ function buildQueries(category, offset, batchSize = 3, manualName = false) {
           ...GENERIC_VARIANTS.slice(0, 7).map(term => category + " " + term),
         ];
   const terms = [...new Set(words)];
-  const variants = terms.map(term => ({ term, query: "site:open.spotify.com/playlist " + term }));
+  // These terms go directly to Spotify's own public search, not to web search engines.
+  const variants = terms.map(term => ({ term, query: term }));
   const safeOffset = Math.max(0, Number(offset) || 0);
   return Array.from({ length: Math.min(batchSize, variants.length) }, (_, step) => {
     const cursor = safeOffset + step;
@@ -149,16 +150,13 @@ module.exports = async function handler(req, res) {
   // Name searches include the user's exact phrase and related playlist queries.
   // Category imports continue rotating through their curated term lists.
   const queries = buildQueries(category, offset, manualName ? 5 : 3, manualName);
-  const pages = await Promise.all(queries.flatMap(search => {
-    const start = search.page * 10;
-    const spotifySearch = "https://open.spotify.com/search/" + encodeURIComponent(search.term) + "/playlists";
-    const targets = [
-      "https://www.bing.com/search?q=" + encodeURIComponent(search.query) + "&first=" + (start + 1),
-      "https://html.duckduckgo.com/html/?q=" + encodeURIComponent(search.query) + "&s=" + start,
-      "https://www.google.com/search?q=" + encodeURIComponent(search.query) + "&start=" + start,
-      spotifySearch,
-    ];
-    return targets.map(url => fetchSearchPage(url).then(result => ({ ...result, query: search.query, page: search.page })));
+  // Search only Spotify's public playlist results. This runs on the scraper server,
+  // so the visitor's local/institute network does not need direct Spotify access.
+  // Google, Bing and DuckDuckGo are deliberately not used as discovery fallbacks.
+  const pages = await Promise.all(queries.map(async search => {
+    const url = "https://open.spotify.com/search/" + encodeURIComponent(search.term) + "/playlists";
+    const result = await fetchSearchPage(url);
+    return { ...result, query: search.query, term: search.term, page: search.page };
   }));
   const ids = [];
   const seen = new Set();
@@ -185,7 +183,7 @@ module.exports = async function handler(req, res) {
   const successfulSources = pages.filter(item => item.ids.length > 0).map(item => item.engine);
   return res.status(200).json({
     success: true,
-    source: "Spotify public search result discovery",
+    source: "Spotify public playlist search scraper",
     category,
     offset,
     query: queries[0]?.query || "",
@@ -195,6 +193,6 @@ module.exports = async function handler(req, res) {
     successfulSources,
     count: results.length,
     results,
-    note: "Playlist IDs are extracted from public search result URLs and must still pass RESONATE's Spotify playlist scraper and track-count verification before import.",
+    note: "Playlist IDs are scraped only from Spotify public playlist search results. Google, Bing and DuckDuckGo are not used. Each candidate must still pass RESONATE's Spotify scraper and non-empty track-list verification before import.",
   });
 };
