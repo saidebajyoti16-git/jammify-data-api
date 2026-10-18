@@ -1,6 +1,7 @@
 const DEFAULT_LIMIT = 60;
 const MAX_LIMIT = 100;
 const ID_PATTERN = new RegExp('open[.]spotify[.]com/(?:user/[^"/? ]+/)?playlist/([A-Za-z0-9]{10,64})', 'gi');
+const URI_PATTERN = /spotify:playlist:([A-Za-z0-9]{10,64})/gi;
 
 const GENERIC_VARIANTS = [
   "best songs playlist",
@@ -61,13 +62,15 @@ function findPlaylistIds(html) {
   const found = [];
   const seen = new Set();
   for (const value of candidates) {
-    ID_PATTERN.lastIndex = 0;
-    let match;
-    while ((match = ID_PATTERN.exec(value)) !== null) {
-      const id = match[1];
-      if (!seen.has(id)) {
-        seen.add(id);
-        found.push(id);
+    for (const pattern of [ID_PATTERN, URI_PATTERN]) {
+      pattern.lastIndex = 0;
+      let match;
+      while ((match = pattern.exec(value)) !== null) {
+        const id = match[1];
+        if (!seen.has(id)) {
+          seen.add(id);
+          found.push(id);
+        }
       }
     }
   }
@@ -109,13 +112,14 @@ function buildQueries(category, offset, batchSize = 3) {
         category + " new songs",
         ...GENERIC_VARIANTS.slice(0, 7).map(term => category + " " + term),
       ];
-  const variants = [...new Set(words.map(term => "site:open.spotify.com/playlist " + term))];
+  const terms = [...new Set(words)];
+  const variants = terms.map(term => ({ term, query: "site:open.spotify.com/playlist " + term }));
   const safeOffset = Math.max(0, Number(offset) || 0);
   return Array.from({ length: Math.min(batchSize, variants.length) }, (_, step) => {
     const cursor = safeOffset + step;
     const index = cursor % variants.length;
     const page = Math.floor(cursor / variants.length);
-    return { query: variants[index], page, variantCount: variants.length };
+    return { ...variants[index], page, variantCount: variants.length };
   });
 }
 
@@ -137,10 +141,12 @@ module.exports = async function handler(req, res) {
   const queries = buildQueries(category, offset, 3);
   const pages = await Promise.all(queries.flatMap(search => {
     const start = search.page * 10;
+    const spotifySearch = "https://open.spotify.com/search/" + encodeURIComponent(search.term) + "/playlists";
     const targets = [
       "https://www.bing.com/search?q=" + encodeURIComponent(search.query) + "&first=" + (start + 1),
       "https://html.duckduckgo.com/html/?q=" + encodeURIComponent(search.query) + "&s=" + start,
       "https://www.google.com/search?q=" + encodeURIComponent(search.query) + "&start=" + start,
+      spotifySearch,
     ];
     return targets.map(url => fetchSearchPage(url).then(result => ({ ...result, query: search.query, page: search.page })));
   }));
@@ -173,7 +179,7 @@ module.exports = async function handler(req, res) {
     category,
     offset,
     query: queries[0]?.query || "",
-    queries: queries.map(({ query, page }) => ({ query, page })),
+    queries: queries.map(({ query, term, page }) => ({ query, term, page })),
     variantCount: queries[0]?.variantCount || 0,
     searchedEngines: pages.map(({ engine, status, error, query, page }) => ({ engine, status, error, query, page })),
     successfulSources,
