@@ -13,6 +13,22 @@ function decodeHtml(value) {
     .replace(/&gt;/g, ">");
 }
 
+function proxyArtwork(value) {
+  if (typeof value !== "string" || !value) return "";
+  try {
+    const image = new URL(value);
+    const approvedHosts = new Set([
+      "i.scdn.co",
+      "image-cdn-fa.spotifycdn.com",
+      "image-cdn-ak.spotifycdn.com"
+    ]);
+    if (image.protocol !== "https:" || !approvedHosts.has(image.hostname)) return value;
+    return "https://jammify-data-api.vercel.app/api/image?url=" + encodeURIComponent(value);
+  } catch {
+    return "";
+  }
+}
+
 async function fetchText(url, accept = "text/html,application/xhtml+xml") {
   const response = await fetch(url, {
     headers: {
@@ -198,7 +214,8 @@ module.exports = async function handler(req, res) {
     const metaTitleMatch = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']*)["']/i);
     const metaImageMatch = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']*)["']/i);
     const title = decodeHtml(oembed?.title || metaTitleMatch?.[1] || titleMatch?.[1] || "Spotify Playlist");
-    const imageUrl = oembed?.thumbnail_url || (metaImageMatch?.[1] ? decodeHtml(metaImageMatch[1]) : "");
+    const originalImageUrl = oembed?.thumbnail_url || (metaImageMatch?.[1] ? decodeHtml(metaImageMatch[1]) : "");
+    const imageUrl = proxyArtwork(originalImageUrl);
 
     if (!tracks.length) {
       return sendError(res, 502, "Spotify's public page did not expose a readable track list for this playlist", {
