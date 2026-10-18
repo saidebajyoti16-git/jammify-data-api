@@ -217,6 +217,16 @@ const PLAYLISTS = [
   // More Indian music and regional discovery
   { name: "Tamil Hits", id: "37i9dQZF1DX4TnpT6vw5rE", category: "Tamil" },
   { name: "Telugu Hits", id: "37i9dQZF1DX6XE7HRLM75P", category: "Telugu" },
+  { name: "Trending Now Telugu", id: "37i9dQZF1DWTt3gMo0DLxA", category: "Telugu" },
+  { name: "Latest Telugu", id: "37i9dQZF1DWWwrjLPC16W7", category: "Telugu" },
+  { name: "Telugu Love Songs", id: "37i9dQZF1DX44F1QWqYoaV", category: "Telugu" },
+  { name: "Latest Romance Telugu", id: "37i9dQZF1DX1MYRp9oolwH", category: "Telugu" },
+  { name: "The Sound of Telugu Devotional", id: "7sthD5x0s2G0XZNzVW40hX", category: "Telugu" },
+  { name: "The Sound of Telugu Folk", id: "5kBbiu7DuLPkn2GuElAUmK", category: "Telugu" },
+  { name: "Trending Telugu Songs 2026", id: "2yfHmwIKZGoYDG7lK1FtYF", category: "Telugu" },
+  { name: "New Telugu Songs 2026", id: "505qJB0SKA1QxPiTMDGSIh", category: "Telugu" },
+  { name: "Latest Top Telugu Songs 2026", id: "5qBaCNDovzWx8Vd3Ak0yqA", category: "Telugu" },
+  { name: "Telugu New Songs 2026", id: "6dEe2unrmszTGy7u8uTc2f", category: "Telugu" },
   { name: "Malayalam Hits", id: "37i9dQZF1DX7ZUug1ANKRP", category: "Malayalam" },
 
   // More Latin, African, reggae and world music
