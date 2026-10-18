@@ -1,3 +1,90 @@
+
+const GENRE_ALIASES = {
+  "english-hits": ["Charts", "Pop", "Rock", "Indie", "Hip-Hop", "R&B"],
+  hollywood: ["Soundtracks", "Pop", "Rock"],
+  "english-romantic": ["Love Songs", "Pop", "R&B", "Mood"],
+  "english-sad": ["Mood", "Love Songs", "Indie"],
+  "english-party": ["Dance", "Electronic", "EDM", "Pop", "Hip-Hop", "Workout"],
+  "english-pop": ["Pop", "Charts"],
+  "english-rock": ["Rock", "Punk", "Metal", "Indie"],
+  "80s-english": ["Throwbacks", "Rock", "Pop"],
+  "90s-english": ["Throwbacks", "Rock", "Hip-Hop", "Pop"],
+  "2000s-english": ["Throwbacks", "Rock", "Pop", "Hip-Hop"],
+  "2010s-english": ["Throwbacks", "Pop", "Hip-Hop", "Dance"],
+  "english-hip-hop": ["Hip-Hop"],
+  "english-rnb": ["R&B"],
+  "english-country": ["Country"],
+  "english-folk": ["Folk", "Acoustic", "Indie"],
+  "english-electronic": ["Electronic", "EDM", "Dance", "House"],
+  "british-hits": ["Pop", "Rock", "Charts", "R&B"],
+  "american-hits": ["Charts", "Pop", "Rock", "Country", "Hip-Hop"],
+  bollywood: ["Hindi", "Indian Pop", "Indian Indie", "Hindi Romance"],
+  punjabi: ["Punjabi"],
+  tamil: ["Tamil"],
+  telugu: ["Telugu"],
+  "hindi-romantic": ["Hindi Romance", "Hindi", "Love Songs"],
+  "punjabi-party": ["Punjabi", "Dance", "Workout"],
+  "bollywood-sad": ["Hindi", "Hindi Romance", "Mood"],
+  "tamil-melody": ["Tamil"],
+  malayalam: ["Malayalam"],
+  kannada: ["Kannada"],
+  marathi: ["Marathi"],
+  gujarati: ["Gujarati"],
+  bengali: ["Bengali"],
+  pop: ["Pop", "Charts"],
+  rock: ["Rock", "Punk", "Metal"],
+  hiphop: ["Hip-Hop"],
+  electronic: ["Electronic", "EDM", "Dance", "House"],
+  jazz: ["Jazz"],
+  classical: ["Classical"],
+  carnatic: ["Carnatic", "Classical"],
+  hindustani: ["Hindustani", "Classical"],
+  ghazal: ["Ghazal", "Sufi", "Hindi Romance"],
+  qawwali: ["Qawwali", "Sufi", "Devotional"],
+  bhajan: ["Bhajan", "Devotional"],
+  korean: ["K-Pop"],
+  japanese: ["J-Pop", "Anime"],
+  romance: ["Love Songs", "Hindi Romance", "Mood", "R&B", "Pop"],
+  sad: ["Mood", "Hindi Romance", "Indie"],
+  party: ["Dance", "Electronic", "EDM", "Pop", "Hip-Hop", "Workout"],
+  workout: ["Workout"],
+  chill: ["Chill", "Lo-fi", "Focus", "Sleep", "Ambient", "Acoustic"],
+  devotional: ["Devotional", "Bhajan", "Qawwali", "Sufi"],
+  "alternative-rock": ["Rock", "Indie", "Punk"],
+  "classic-rock": ["Rock", "Throwbacks"],
+  edm: ["EDM", "Electronic", "Dance"],
+  house: ["House", "Electronic", "Dance"],
+  latin: ["Latin"],
+  reggae: ["Reggae", "World", "Afrobeats"],
+  rnb: ["R&B"],
+  soul: ["R&B", "Jazz"],
+  country: ["Country"],
+  folk: ["Folk", "Acoustic"],
+  blues: ["Blues", "Jazz"],
+  "80s": ["Throwbacks"],
+  "90s": ["Throwbacks"],
+  "2000s": ["Throwbacks"]
+};
+const GENRE_NAMES = [
+  ["english-hits","English Hits"],["hollywood","Hollywood"],["english-romantic","English Romantic"],
+  ["english-sad","English Sad"],["english-party","English Party"],["english-pop","English Pop"],
+  ["english-rock","English Rock"],["80s-english","80s English"],["90s-english","90s English"],
+  ["2000s-english","2000s English"],["2010s-english","2010s English"],["english-hip-hop","English Hip Hop"],
+  ["english-rnb","English R&B"],["english-country","English Country"],["english-folk","English Folk"],
+  ["english-electronic","English Electronic"],["british-hits","British Hits"],["american-hits","American Hits"],
+  ["bollywood","Bollywood"],["punjabi","Punjabi"],["tamil","Tamil"],["telugu","Telugu"],
+  ["hindi-romantic","Hindi Romantic"],["punjabi-party","Punjabi Party"],["bollywood-sad","Bollywood Sad"],
+  ["tamil-melody","Tamil Melody"],["malayalam","Malayalam"],["kannada","Kannada"],["marathi","Marathi"],
+  ["gujarati","Gujarati"],["bengali","Bengali"],["pop","Pop"],["rock","Rock"],["hiphop","Hip Hop"],
+  ["electronic","Electronic"],["jazz","Jazz"],["classical","Classical"],["carnatic","Carnatic"],
+  ["hindustani","Hindustani"],["ghazal","Ghazal"],["qawwali","Qawwali"],["bhajan","Bhajan"],
+  ["korean","K-Pop"],["japanese","J-Pop"],["romance","Romance"],["sad","Sad"],["party","Party"],
+  ["workout","Workout"],["chill","Chill"],["devotional","Devotional"],["alternative-rock","Alternative Rock"],
+  ["classic-rock","Classic Rock"],["edm","EDM"],["house","House"],["latin","Latin"],["reggae","Reggae"],
+  ["rnb","R&B"],["soul","Soul"],["country","Country"],["folk","Folk"],["blues","Blues"],
+  ["80s","80s"],["90s","90s"],["2000s","2000s"]
+];
+
 const PLAYLISTS = [
   // Charts and current hits
   { name: "Today’s Top Hits", id: "37i9dQZF1DXcBWIGoYBM5M", category: "Pop" },
@@ -358,9 +445,21 @@ module.exports = async function handler(req, res) {
   // load genre shelves independently (for example ?category=Tamil or ?genre=Pop).
   const requestedCategory = String(req.query?.category || req.query?.genre || "all").trim();
   const normalizeCategory = value => String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+  const genreEntry = GENRE_NAMES.find(([id, name]) =>
+    normalizeCategory(id) === normalizeCategory(requestedCategory) ||
+    normalizeCategory(name) === normalizeCategory(requestedCategory)
+  );
+  const targetCategories = genreEntry
+    ? (GENRE_ALIASES[genreEntry[0]] || [genreEntry[1]])
+    : [requestedCategory];
+  const targetCategoryKeys = targetCategories.map(normalizeCategory);
   const sourcePlaylists = !requestedCategory || normalizeCategory(requestedCategory) === "all"
     ? PLAYLISTS
-    : PLAYLISTS.filter(item => normalizeCategory(item.category) === normalizeCategory(requestedCategory));
+    : PLAYLISTS.filter(item => {
+        const categoryKey = normalizeCategory(item.category);
+        const titleKey = normalizeCategory(item.name);
+        return targetCategoryKeys.some(key => categoryKey === key || (key.length >= 4 && titleKey.includes(key)));
+      });
   const catalogue = [...new Map(sourcePlaylists.map(item => [item.id, item])).values()];
   const results = new Array(catalogue.length);
   let nextIndex = 0;
@@ -459,6 +558,7 @@ module.exports = async function handler(req, res) {
     failed: results.filter((item) => !item || !item.ok).length,
     genres: genreGroups,
     availableCategories: [...new Set(PLAYLISTS.map(item => item.category))].sort(),
+    availableGenres: GENRE_NAMES.map(([id, name]) => ({ id, name, endpoint: "?genre=" + encodeURIComponent(id), matchedCategories: GENRE_ALIASES[id] || [name] })),
     results
   });
 };
