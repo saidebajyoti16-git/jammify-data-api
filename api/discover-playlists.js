@@ -93,7 +93,7 @@ async function fetchSearchPage(url) {
   }
 }
 
-function buildQueries(category, offset) {
+function buildQueries(category, offset, batchSize = 3) {
   const key = normalize(category);
   const specific = CATEGORY_VARIANTS[key];
   const words = specific && specific.length
@@ -111,9 +111,12 @@ function buildQueries(category, offset) {
       ];
   const variants = [...new Set(words.map(term => "site:open.spotify.com/playlist " + term))];
   const safeOffset = Math.max(0, Number(offset) || 0);
-  const index = safeOffset % variants.length;
-  const page = Math.floor(safeOffset / variants.length);
-  return { query: variants[index], page, variantCount: variants.length };
+  return Array.from({ length: Math.min(batchSize, variants.length) }, (_, step) => {
+    const cursor = safeOffset + step;
+    const index = cursor % variants.length;
+    const page = Math.floor(cursor / variants.length);
+    return { query: variants[index], page, variantCount: variants.length };
+  });
 }
 
 module.exports = async function handler(req, res) {
@@ -128,14 +131,19 @@ module.exports = async function handler(req, res) {
   if (!category) return res.status(400).json({ success: false, error: "Missing category or q" });
   const offset = Math.max(0, Number.parseInt(req.query.offset || "0", 10) || 0);
   const limit = Math.min(MAX_LIMIT, Math.max(1, Number.parseInt(req.query.limit || String(DEFAULT_LIMIT), 10) || DEFAULT_LIMIT));
-  const { query, page, variantCount } = buildQueries(category, offset);
-  const start = page * 10;
-  const targets = [
-    "https://www.bing.com/search?q=" + encodeURIComponent(query) + "&first=" + (start + 1),
-    "https://html.duckduckgo.com/html/?q=" + encodeURIComponent(query) + "&s=" + start,
-    "https://www.google.com/search?q=" + encodeURIComponent(query) + "&start=" + start,
-  ];
-  const pages = await Promise.all(targets.map(fetchSearchPage));
+  // Search multiple independent query variants per import. This is important
+  // for large categories such as Telugu: one result page often contains mostly
+  // playlists already in the database, while neighbouring queries reveal more.
+  const queries = buildQueries(category, offset, 3);
+  const pages = await Promise.all(queries.flatMap(search => {
+    const start = search.page * 10;
+    const targets = [
+      "https://www.bing.com/search?q=" + encodeURIComponent(search.query) + "&first=" + (start + 1),
+      "https://html.duckduckgo.com/html/?q=" + encodeURIComponent(search.query) + "&s=" + start,
+      "https://www.google.com/search?q=" + encodeURIComponent(search.query) + "&start=" + start,
+    ];
+    return targets.map(url => fetchSearchPage(url).then(result => ({ ...result, query: search.query, page: search.page })));
+  }));
   const ids = [];
   const seen = new Set();
   for (const pageResult of pages) {
@@ -164,10 +172,10 @@ module.exports = async function handler(req, res) {
     source: "Spotify public search result discovery",
     category,
     offset,
-    query,
-    page,
-    variantCount,
-    searchedEngines: pages.map(({ engine, status, error }) => ({ engine, status, error })),
+    query: queries[0]?.query || "",
+    queries: queries.map(({ query, page }) => ({ query, page })),
+    variantCount: queries[0]?.variantCount || 0,
+    searchedEngines: pages.map(({ engine, status, error, query, page }) => ({ engine, status, error, query, page })),
     successfulSources,
     count: results.length,
     results,
