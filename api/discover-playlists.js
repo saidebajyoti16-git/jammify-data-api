@@ -96,22 +96,32 @@ async function fetchSearchPage(url) {
   }
 }
 
-function buildQueries(category, offset, batchSize = 3) {
+function buildQueries(category, offset, batchSize = 3, manualName = false) {
   const key = normalize(category);
   const specific = CATEGORY_VARIANTS[key];
-  const words = specific && specific.length
-    ? specific
-    : [
-        category + " hits",
-        "best " + category + " songs",
-        category + " latest songs",
-        category + " trending music",
-        category + " love songs",
-        category + " popular playlists",
-        category + " music 2026",
-        category + " new songs",
-        ...GENERIC_VARIANTS.slice(0, 7).map(term => category + " " + term),
-      ];
+  const words = manualName
+    ? [
+        category,
+        category + " playlist",
+        "best " + category + " playlists",
+        category + " official playlist",
+        category + " 2026 playlist",
+        "latest " + category + " playlist",
+        category + " hits playlist",
+      ]
+    : specific && specific.length
+      ? specific
+      : [
+          category + " hits",
+          "best " + category + " songs",
+          category + " latest songs",
+          category + " trending music",
+          category + " love songs",
+          category + " popular playlists",
+          category + " music 2026",
+          category + " new songs",
+          ...GENERIC_VARIANTS.slice(0, 7).map(term => category + " " + term),
+        ];
   const terms = [...new Set(words)];
   const variants = terms.map(term => ({ term, query: "site:open.spotify.com/playlist " + term }));
   const safeOffset = Math.max(0, Number(offset) || 0);
@@ -131,14 +141,14 @@ module.exports = async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "GET") return res.status(405).json({ success: false, error: "Method not allowed" });
 
-  const category = String(req.query.category || req.query.q || "").trim();
-  if (!category) return res.status(400).json({ success: false, error: "Missing category or q" });
+  const category = String(req.query.query || req.query.category || req.query.q || "").trim();
+  if (!category) return res.status(400).json({ success: false, error: "Missing category, query or q" });
   const offset = Math.max(0, Number.parseInt(req.query.offset || "0", 10) || 0);
   const limit = Math.min(MAX_LIMIT, Math.max(1, Number.parseInt(req.query.limit || String(DEFAULT_LIMIT), 10) || DEFAULT_LIMIT));
-  // Search multiple independent query variants per import. This is important
-  // for large categories such as Telugu: one result page often contains mostly
-  // playlists already in the database, while neighbouring queries reveal more.
-  const queries = buildQueries(category, offset, 3);
+  const manualName = String(req.query.mode || "").toLowerCase() === "name";
+  // Name searches include the user's exact phrase and related playlist queries.
+  // Category imports continue rotating through their curated term lists.
+  const queries = buildQueries(category, offset, manualName ? 5 : 3, manualName);
   const pages = await Promise.all(queries.flatMap(search => {
     const start = search.page * 10;
     const spotifySearch = "https://open.spotify.com/search/" + encodeURIComponent(search.term) + "/playlists";
