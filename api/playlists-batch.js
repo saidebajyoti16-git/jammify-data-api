@@ -354,7 +354,14 @@ module.exports = async function handler(req, res) {
   // serverless function or Spotify's public oEmbed endpoint.
   // De-duplicate IDs before requests. Spotify's public title is authoritative;
   // the hardcoded name is only a fallback if Spotify doesn't return one.
-  const catalogue = [...new Map(PLAYLISTS.map(item => [item.id, item])).values()];
+  // Optional category/genre filtering keeps each request small and lets RESONATE
+  // load genre shelves independently (for example ?category=Tamil or ?genre=Pop).
+  const requestedCategory = String(req.query?.category || req.query?.genre || "all").trim();
+  const normalizeCategory = value => String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+  const sourcePlaylists = !requestedCategory || normalizeCategory(requestedCategory) === "all"
+    ? PLAYLISTS
+    : PLAYLISTS.filter(item => normalizeCategory(item.category) === normalizeCategory(requestedCategory));
+  const catalogue = [...new Map(sourcePlaylists.map(item => [item.id, item])).values()];
   const results = new Array(catalogue.length);
   let nextIndex = 0;
   const workerCount = Math.min(12, catalogue.length);
@@ -434,12 +441,24 @@ module.exports = async function handler(req, res) {
   await Promise.all(Array.from({ length: workerCount }, () => worker()));
 
   res.setHeader("Cache-Control", "s-maxage=300, stale-while-revalidate=600");
+  const successfulResults = results.filter((item) => item && item.ok);
+  const genreGroups = successfulResults.reduce((groups, item) => {
+    const genre = item.category || "Other";
+    if (!groups[genre]) groups[genre] = [];
+    groups[genre].push(item);
+    return groups;
+  }, {});
+
   return res.status(200).json({
-    ok: results.some((item) => item && item.ok),
+    ok: successfulResults.length > 0,
+    category: requestedCategory || "all",
     total: results.length,
-    catalogued: PLAYLISTS.length,
-    successful: results.filter((item) => item && item.ok).length,
+    catalogued: catalogue.length,
+    catalogueTotal: PLAYLISTS.length,
+    successful: successfulResults.length,
     failed: results.filter((item) => !item || !item.ok).length,
+    genres: genreGroups,
+    availableCategories: [...new Set(PLAYLISTS.map(item => item.category))].sort(),
     results
   });
 };
