@@ -4,6 +4,76 @@ const SPOTIFY_ID_RE = /^[A-Za-z0-9]{22}$/;
 function sendError(res, status, error, extra = {}) {
   return res.status(status).json({ success: false, error, ...extra });
 }
+ 
+// Prefer Spotify's supported Web API when server-side client credentials are configured.
+// Keep credentials in Vercel environment variables; never expose them to the browser.
+async function fetchSpotifyApiPlaylist(playlistId) {
+  const clientId = process.env.SPOTIFY_CLIENT_ID;
+  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
+  if (!clientId || !clientSecret) return { configured: false };
+
+  const tokenResponse = await fetch("https://accounts.spotify.com/api/token", {
+    method: "POST",
+    headers: {
+      Authorization: "Basic " + Buffer.from(clientId + ":" + clientSecret).toString("base64"),
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    body: "grant_type=client_credentials",
+    signal: AbortSignal.timeout(9000)
+  });
+  const tokenBody = await tokenResponse.json().catch(() => ({}));
+  if (!tokenResponse.ok || !tokenBody.access_token) {
+    return { configured: true, error: "Could not obtain a Spotify Web API access token", status: tokenResponse.status, detail: tokenBody.error_description || tokenBody.error || "" };
+  }
+
+  const headers = { Authorization: "Bearer " + tokenBody.access_token, Accept: "application/json" };
+  const playlistResponse = await fetch("https://api.spotify.com/v1/playlists/" + encodeURIComponent(playlistId), {
+    headers, signal: AbortSignal.timeout(9000)
+  });
+  const playlistBody = await playlistResponse.json().catch(() => ({}));
+  if (!playlistResponse.ok) {
+    return { configured: true, error: playlistBody.error?.message || "Spotify playlist API request failed", status: playlistResponse.status };
+  }
+
+  const tracks = [];
+  let next = "https://api.spotify.com/v1/playlists/" + encodeURIComponent(playlistId) + "/tracks?limit=100";
+  // Bound response size/time for Vercel serverless execution; enough for normal playlists.
+  for (let page = 0; next && page < 5; page++) {
+    const pageResponse = await fetch(next, { headers, signal: AbortSignal.timeout(9000) });
+    const pageBody = await pageResponse.json().catch(() => ({}));
+    if (!pageResponse.ok) {
+      return { configured: true, error: pageBody.error?.message || "Spotify playlist tracks request failed", status: pageResponse.status };
+    }
+    for (const item of pageBody.items || []) {
+      const track = item?.track;
+      if (!track || track.is_local || !track.id) continue;
+      const normalized = normalizeTrack({
+        id: track.id,
+        name: track.name,
+        artists: (track.artists || []).map(artist => artist.name),
+        duration_ms: track.duration_ms
+      });
+      if (normalized) tracks.push(normalized);
+    }
+    next = pageBody.next || null;
+  }
+
+  return {
+    configured: true,
+    playlist: {
+      id: playlistId,
+      name: playlistBody.name || "Spotify Playlist",
+      description: playlistBody.description || "",
+      owner: playlistBody.owner?.display_name || "",
+      url: playlistBody.external_urls?.spotify || "https://open.spotify.com/playlist/" + playlistId,
+      images: (playlistBody.images || []).map(image => ({ url: proxyArtwork(image.url) || image.url }))
+    },
+    tracks,
+    total: tracks.length,
+    source: "spotify-web-api",
+    upstreamTotal: playlistBody.tracks?.total ?? tracks.length
+  };
+}
 
 function decodeHtml(value) {
   return String(value || "")
@@ -171,6 +241,23 @@ module.exports = async function handler(req, res) {
   const embedUrl = `https://open.spotify.com/embed/playlist/${playlistId}`;
 
   try {
+    // First use the supported Spotify Web API when credentials are configured.
+    // This works for playlist IDs absent from the local catalogue.
+    const apiResult = await fetchSpotifyApiPlaylist(playlistId);
+    if (apiResult.configured && !apiResult.error && apiResult.tracks?.length) {
+      return res.status(200).json({
+        success: true,
+        source: apiResult.source,
+        playlist: apiResult.playlist,
+        tracks: apiResult.tracks,
+        total: apiResult.total,
+        upstreamTotal: apiResult.upstreamTotal
+      });
+    }
+    if (apiResult.configured && apiResult.error && [401, 403].includes(apiResult.status)) {
+      // Continue to public-page scraping; retain API diagnostic if scraping also fails.
+    }
+
     // The ID is intentionally not looked up in the local catalogue. Try both
     // Spotify's embed page and its regular public playlist page for fresh IDs.
     const [oembedResult, embedResult, publicPageResult] = await Promise.allSettled([
@@ -232,7 +319,10 @@ module.exports = async function handler(req, res) {
       return sendError(res, 502, "Spotify's public page did not expose a readable track list for this playlist", {
         playlistId,
         title,
-        hint: "Public page scraping can change or be rate-limited. No placeholder tracks were returned."
+        spotifyApi: apiResult.configured ? { status: apiResult.status || null, error: apiResult.error || null } : "not_configured",
+        hint: apiResult.configured
+          ? "Spotify Web API was attempted but did not return tracks. Check Vercel SPOTIFY_CLIENT_ID/SPOTIFY_CLIENT_SECRET and the playlist's access permissions."
+          : "Set SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET in Vercel to enable the supported Spotify Web API fallback. Public-page scraping alone cannot reliably expose tracks."
       });
     }
 
