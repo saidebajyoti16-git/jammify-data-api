@@ -473,7 +473,9 @@ module.exports = async function handler(req, res) {
   const catalogue = [...new Map(sourcePlaylists.map(item => [item.id, item])).values()];
   const results = new Array(catalogue.length);
   let nextIndex = 0;
-  const workerCount = Math.min(12, catalogue.length);
+  // Keep concurrency low: the previous 12-worker fan-out triggered widespread HTTP 429s.
+  // Category/genre requests are the preferred way to hydrate the catalogue in small batches.
+  const workerCount = Math.min(3, catalogue.length);
 
   async function worker() {
     while (true) {
@@ -484,11 +486,25 @@ module.exports = async function handler(req, res) {
       try {
         const endpoint = new URL("https://open.spotify.com/oembed");
         endpoint.searchParams.set("url", playlistUrl);
-        const response = await fetch(endpoint, {
-          headers: { Accept: "application/json" },
-          signal: AbortSignal.timeout(4500)
-        });
-        const body = await response.text();
+        let response;
+        let body = "";
+        // Retry rate limits/transient upstream errors with bounded exponential backoff.
+        // Do not issue a second public-page request when Spotify is explicitly rate-limiting us.
+        for (let attempt = 0; attempt < 3; attempt++) {
+          response = await fetch(endpoint, {
+            headers: { Accept: "application/json" },
+            signal: AbortSignal.timeout(6500)
+          });
+          body = await response.text();
+          if (response.status !== 429 && response.status < 500) break;
+          if (attempt < 2) {
+            const retryAfterSeconds = Number(response.headers.get("retry-after"));
+            const delayMs = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+              ? Math.min(retryAfterSeconds * 1000, 8000)
+              : (1000 * (2 ** attempt)) + Math.floor(Math.random() * 300);
+            await new Promise(resolve => setTimeout(resolve, delayMs));
+          }
+        }
         let data;
         try {
           data = JSON.parse(body);
@@ -497,11 +513,22 @@ module.exports = async function handler(req, res) {
           continue;
         }
         if (!response.ok) {
+          if (response.status === 429) {
+            results[index] = {
+              ...playlist,
+              ok: false,
+              status: 429,
+              retryable: true,
+              error: "Spotify rate-limited this request after bounded retries; retry this category later."
+            };
+            continue;
+          }
           const page = await fetchPublicPageMetadata(playlistUrl);
           const pageImage = proxyArtwork(page?.image || "");
           if (pageImage) {
             results[index] = {
               ...playlist,
+              name: page?.title || playlist.name,
               ok: true,
               title: page?.title || playlist.name,
               thumbnail_url: pageImage,
@@ -533,6 +560,9 @@ module.exports = async function handler(req, res) {
         }
         results[index] = {
           ...playlist,
+          // Keep name and title aligned with the verified upstream title.
+          // The catalogue name is only a fallback; some hardcoded ID/name pairs are stale.
+          name: playlistTitle,
           ok: true,
           title: playlistTitle,
           thumbnail_url: artwork || null,
