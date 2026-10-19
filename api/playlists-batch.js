@@ -475,7 +475,9 @@ module.exports = async function handler(req, res) {
   let nextIndex = 0;
   // Keep concurrency low: the previous 12-worker fan-out triggered widespread HTTP 429s.
   // Category/genre requests are the preferred way to hydrate the catalogue in small batches.
-  const workerCount = Math.min(3, catalogue.length);
+  const isAllCatalogueRequest = normalizeCategory(requestedCategory) === "all";
+  const workerCount = Math.min(isAllCatalogueRequest ? 4 : 3, catalogue.length);
+  const maxAttempts = isAllCatalogueRequest ? 1 : 3;
 
   async function worker() {
     while (true) {
@@ -490,14 +492,14 @@ module.exports = async function handler(req, res) {
         let body = "";
         // Retry rate limits/transient upstream errors with bounded exponential backoff.
         // Do not issue a second public-page request when Spotify is explicitly rate-limiting us.
-        for (let attempt = 0; attempt < 3; attempt++) {
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
           response = await fetch(endpoint, {
             headers: { Accept: "application/json" },
             signal: AbortSignal.timeout(6500)
           });
           body = await response.text();
           if (response.status !== 429 && response.status < 500) break;
-          if (attempt < 2) {
+          if (attempt < maxAttempts - 1) {
             const retryAfterSeconds = Number(response.headers.get("retry-after"));
             const delayMs = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
               ? Math.min(retryAfterSeconds * 1000, 8000)
