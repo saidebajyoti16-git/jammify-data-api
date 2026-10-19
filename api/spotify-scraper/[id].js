@@ -1,4 +1,5 @@
-const SPOTIFY_ID_RE = /^[A-Za-z0-9]{10,64}$/;
+// Spotify playlist IDs use the 22-character Base62 format.
+const SPOTIFY_ID_RE = /^[A-Za-z0-9]{22}$/;
 
 function sendError(res, status, error, extra = {}) {
   return res.status(status).json({ success: false, error, ...extra });
@@ -163,7 +164,7 @@ module.exports = async function handler(req, res) {
 
   const playlistId = String(req.query?.id || "").trim();
   if (!SPOTIFY_ID_RE.test(playlistId)) {
-    return sendError(res, 400, "Provide a valid Spotify playlist ID in the URL, e.g. /api/spotify-scraper/37i9dQZF1DXcBWIGoYBM5M");
+    return sendError(res, 400, "Invalid Spotify playlist ID. Use the 22-character ID from the Spotify playlist URL after /playlist/, not a MongoDB document ID.");
   }
 
   const playlistUrl = `https://open.spotify.com/playlist/${playlistId}`;
