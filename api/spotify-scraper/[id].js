@@ -171,9 +171,12 @@ module.exports = async function handler(req, res) {
   const embedUrl = `https://open.spotify.com/embed/playlist/${playlistId}`;
 
   try {
-    const [oembedResult, embedResult] = await Promise.allSettled([
+    // The ID is intentionally not looked up in the local catalogue. Try both
+    // Spotify's embed page and its regular public playlist page for fresh IDs.
+    const [oembedResult, embedResult, publicPageResult] = await Promise.allSettled([
       fetchText(`https://open.spotify.com/oembed?url=${encodeURIComponent(playlistUrl)}`, "application/json"),
-      fetchText(embedUrl, "text/html,application/xhtml+xml")
+      fetchText(embedUrl, "text/html,application/xhtml+xml"),
+      fetchText(playlistUrl, "text/html,application/xhtml+xml")
     ]);
 
     let oembed = null;
@@ -181,16 +184,21 @@ module.exports = async function handler(req, res) {
       try { oembed = JSON.parse(oembedResult.value); } catch { /* fallback to HTML metadata */ }
     }
 
-    if (embedResult.status !== "fulfilled") {
-      return sendError(res, 502, "Spotify's public embed page could not be fetched", {
+    const htmlCandidates = [];
+    if (embedResult.status === "fulfilled") htmlCandidates.push(embedResult.value);
+    if (publicPageResult.status === "fulfilled") htmlCandidates.push(publicPageResult.value);
+    if (!htmlCandidates.length) {
+      const reason = embedResult.reason || publicPageResult.reason;
+      return sendError(res, 502, "Spotify's public playlist and embed pages could not be fetched", {
         playlistId,
-        upstreamStatus: embedResult.reason?.status || null,
-        detail: embedResult.reason?.message || "Upstream request failed"
+        upstreamStatus: reason?.status || null,
+        detail: reason?.message || "Upstream request failed",
+        hint: "The playlist may be private, deleted, unavailable in this market, or temporarily blocked by Spotify."
       });
     }
 
-    const html = embedResult.value;
-    const roots = extractEmbeddedJson(html);
+    const roots = htmlCandidates.flatMap(extractEmbeddedJson);
+    const html = htmlCandidates.find(candidate => /og:title|og:image|spotify:track:|trackList|__NEXT_DATA__/i.test(candidate)) || htmlCandidates[0];
     let tracks = [];
     for (const root of roots) {
       const arrays = collectTrackArrays(root);
@@ -200,7 +208,9 @@ module.exports = async function handler(req, res) {
     // Search JSON-like fragments containing the Spotify track URI when the page
     // doesn't provide a parseable script payload.
     if (!tracks.length) {
-      const uriMatches = [...html.matchAll(/spotify:track:([A-Za-z0-9]{10,64})/g)].map(m => m[1]);
+      const uriMatches = htmlCandidates.flatMap(candidate =>
+        [...candidate.matchAll(/spotify:track:([A-Za-z0-9]{22})/g)].map(m => m[1])
+      );
       const uniqueIds = [...new Set(uriMatches)];
       if (uniqueIds.length) {
         return sendError(res, 502, "Spotify returned track identifiers but not enough public track metadata to import safely", {
